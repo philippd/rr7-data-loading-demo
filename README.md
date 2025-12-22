@@ -1,87 +1,106 @@
-# Welcome to React Router!
+# React Router Data Loading Patterns
 
-A modern, production-ready template for building full-stack React applications using React Router.
+Prototype exploring SSR and client-side data loading in React Router 7, achieving a Netflix-like pattern where content loads in background while a dialog is displayed.
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/remix-run/react-router-templates/tree/main/default)
+## Goal
 
-## Features
+When navigating to `/home/dialog`:
+- **Dialog**: SSR immediately (priority content)
+- **Home**: Load in background on client, display when ready
 
-- 🚀 Server-side rendering
-- ⚡️ Hot Module Replacement (HMR)
-- 📦 Asset bundling and optimization
-- 🔄 Data loading and mutations
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📖 [React Router docs](https://reactrouter.com/)
+## Pattern: dialog.tsx (simple)
 
-## Getting Started
+```typescript
+// Server: await for SSR
+export async function loader({ request }) {
+  return { title: await fetchDialog(...) };
+}
 
-### Installation
-
-Install the dependencies:
-
-```bash
-npm install
+// Client: return unresolved promise for deferred loading
+export function clientLoader({ request }) {
+  return { title: fetchDialog(...) };  // no await!
+}
 ```
 
-### Development
+Component uses `<Suspense>` + `<Await>`:
 
-Start the development server with HMR:
-
-```bash
-npm run dev
+```tsx
+<Suspense fallback={<Spinner />}>
+  <Await resolve={title} errorElement={<ErrorComponent />}>
+    {(t) => <h2>{t}</h2>}
+  </Await>
+</Suspense>
 ```
 
-Your application will be available at `http://localhost:5173`.
+Server returns resolved data (SSR). On client navigation, `clientLoader` returns an unresolved promise, `<Await>` suspends until resolved.
 
-## Building for Production
+## Pattern: home.tsx (parent route with child)
 
-Create a production build:
+Home needs different behavior depending on whether it's the active route or parent of a child:
 
-```bash
-npm run build
+```typescript
+// Server: only fetch for exact match
+export async function loader({ request }) {
+  if (isExactMatch(url.pathname)) {
+    return { title: await fetchHome(...) };
+  }
+  return { title: null };  // child route active, skip server fetch
+}
+
+// Client: use server data for exact match, fetch for child routes
+export async function clientLoader({ request, serverLoader }) {
+  if (isExactMatch(url.pathname)) {
+    return serverLoader();
+  }
+  return { title: await fetchHome(...) };
+}
+clientLoader.hydrate = true;  // required!
 ```
 
-## Deployment
+Component uses **conditional rendering** (not `<Await>`):
 
-### Docker Deployment
-
-To build and run using Docker:
-
-```bash
-docker build -t my-app .
-
-# Run the container
-docker run -p 3000:3000 my-app
+```tsx
+{title ? <h1>{title}</h1> : <Spinner />}
 ```
 
-The containerized application can be deployed to any platform that supports Docker, including:
+### Why not `<Await>` for home?
 
-- AWS ECS
-- Google Cloud Run
-- Azure Container Apps
-- Digital Ocean App Platform
-- Fly.io
-- Railway
+`<Await resolve={null}>` doesn't suspend - it resolves immediately with `null`. Since server returns `null` for child routes, conditional rendering is needed to show spinner.
 
-### DIY Deployment
+### Why `clientLoader.hydrate = true`?
 
-If you're familiar with deploying Node applications, the built-in app server is production-ready.
+Without it, `clientLoader` only runs on client navigation. For direct navigation to `/home/dialog`, clientLoader must run on hydration to fetch home data.
 
-Make sure to deploy the output of `npm run build`
+## Unresolved Promises: Server vs Client
 
-```
-├── package.json
-├── package-lock.json (or pnpm-lock.yaml, or bun.lockb)
-├── build/
-│   ├── client/    # Static assets
-│   └── server/    # Server-side code
+**Server loaders**: Never return unresolved promises. If the promise rejects, Node.js crashes with an unhandled rejection before React can catch it.
+
+```typescript
+// CRASHES NODE if fetchHome rejects:
+return { title: fetchHome(...) };  // no await = unresolved promise
 ```
 
-## Styling
+**Client loaders**: Unresolved promises are fine. Rejections are caught by:
+- `<Await errorElement>` for deferred data
+- `ErrorBoundary` for awaited data
 
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
+This is why we use `clientLoader` for background/deferred loading instead of returning unresolved promises from server loaders.
+
+## Summary
+
+| Route | Server Loader | Client Loader | Component |
+|-------|--------------|---------------|-----------|
+| `/home` | await, return data | use serverLoader() | conditional |
+| `/home/dialog` (home) | return null | await, return data | conditional |
+| `/home/dialog` (dialog) | await, return data | return promise | Suspense/Await |
 
 ---
 
-Built with ❤️ using React Router.
+## Development
+
+```bash
+pnpm install
+pnpm dev
+```
+
+App available at `http://localhost:5173`
