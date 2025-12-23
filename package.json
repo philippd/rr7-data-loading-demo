@@ -1,5 +1,5 @@
 {
-  "name": "playplus-routing",
+  "name": "rr7-data-loading-demo",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,11 +11,10 @@
   "dependencies": {
     "@react-router/node": "7.10.1",
     "@react-router/serve": "7.10.1",
-    "isbot": "^5.1.31",
     "react": "^19.2.3",
-    "react-aria-components": "^1.14.0",
     "react-dom": "^19.2.3",
-    "react-router": "7.10.1"
+    "react-router": "7.10.1",
+    "isbot": "^5"
   },
   "devDependencies": {
     "@react-router/dev": "7.10.1",

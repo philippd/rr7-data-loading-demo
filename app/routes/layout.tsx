@@ -22,9 +22,9 @@ export default function Layout() {
     newParams.set("home", home);
     if (showDialog) {
       newParams.set("dialog", dialog);
-      window.location.href = `/home/dialog?${newParams.toString()}`;
+      window.location.href = `/dialog?${newParams.toString()}`;
     } else {
-      window.location.href = `/home?${newParams.toString()}`;
+      window.location.href = `/?${newParams.toString()}`;
     }
   };
 

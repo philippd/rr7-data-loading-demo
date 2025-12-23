@@ -1,10 +1,11 @@
-# React Router Data Loading Patterns
+# React Router Data Loading
 
 Prototype exploring SSR and client-side data loading in React Router 7, achieving a Netflix-like pattern where content loads in background while a dialog is displayed.
 
 ## Goal
 
-When navigating to `/home/dialog`:
+When navigating to `/dialog`:
+
 - **Dialog**: SSR immediately (priority content)
 - **Home**: Load in background on client, display when ready
 
@@ -60,7 +61,9 @@ clientLoader.hydrate = true;  // required!
 Component uses **conditional rendering** (not `<Await>`):
 
 ```tsx
-{title ? <h1>{title}</h1> : <Spinner />}
+{
+  title ? <h1>{title}</h1> : <Spinner />;
+}
 ```
 
 ### Why not `<Await>` for home?
@@ -81,18 +84,11 @@ return { title: fetchHome(...) };  // no await = unresolved promise
 ```
 
 **Client loaders**: Unresolved promises are fine. Rejections are caught by:
+
 - `<Await errorElement>` for deferred data
 - `ErrorBoundary` for awaited data
 
 This is why we use `clientLoader` for background/deferred loading instead of returning unresolved promises from server loaders.
-
-## Summary
-
-| Route | Server Loader | Client Loader | Component |
-|-------|--------------|---------------|-----------|
-| `/home` | await, return data | use serverLoader() | conditional |
-| `/home/dialog` (home) | return null | await, return data | conditional |
-| `/home/dialog` (dialog) | await, return data | return promise | Suspense/Await |
 
 ---
 

@@ -15,7 +15,7 @@ import {
   type PageLoadingBehavior,
 } from "~/utils/loading";
 
-const isExactMatch = (pathname: string) => pathname === "/home";
+const isExactMatch = (pathname: string) => pathname === "/";
 
 async function fetchHome(searchParams: URLSearchParams) {
   await simulateLoading(parseLoadingBehavior(searchParams.get("home")));
