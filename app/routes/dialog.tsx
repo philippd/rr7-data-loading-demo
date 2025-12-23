@@ -1,9 +1,9 @@
 import { Suspense } from "react";
 import { Await, Link } from "react-router";
-import type { Route } from "./+types/dialog";
 import { RouteError } from "~/components/RouteError";
 import { Spinner } from "~/components/Spinner";
 import { parseLoadingBehavior, simulateLoading } from "~/utils/loading";
+import type { Route } from "./+types/dialog";
 
 async function fetchDialog(searchParams: URLSearchParams) {
   const behavior = parseLoadingBehavior(searchParams.get("dialog"));
@@ -18,7 +18,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   return { title };
 }
 
-// Client navigation: return unresolved promise to show spinner
+// Client navigation: return unresolved promise (no await!) to show spinner
 export function clientLoader({ request }: Route.ClientLoaderArgs) {
   const url = new URL(request.url);
   return { title: fetchDialog(url.searchParams) };
@@ -31,6 +31,7 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 export default function Dialog({ loaderData }: Route.ComponentProps) {
   return (
     <div className="py-4">
+      {/* Suspense shows spinner while promise is pending, Await handles resolved/rejected */}
       <Suspense fallback={<Spinner />}>
         <Await
           resolve={loaderData.title}
