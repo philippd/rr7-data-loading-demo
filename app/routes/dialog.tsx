@@ -6,35 +6,35 @@ import { parseLoadingBehavior, simulateLoading } from "~/utils/loading";
 import type { Route } from "./+types/dialog";
 
 async function fetchDialog(searchParams: URLSearchParams) {
-  const behavior = parseLoadingBehavior(searchParams.get("dialog"));
-  await simulateLoading(behavior);
+  await simulateLoading(parseLoadingBehavior(searchParams.get("dialog")));
   return "Dialog Title";
 }
 
 // SSR: await the data before rendering
 export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
-  const title = await fetchDialog(url.searchParams);
-  return { title };
+  return { dialogData: await fetchDialog(url.searchParams) };
 }
 
 // Client navigation: return unresolved promise (no await!) to show spinner
 export function clientLoader({ request }: Route.ClientLoaderArgs) {
   const url = new URL(request.url);
-  return { title: fetchDialog(url.searchParams) };
+  return { dialogData: fetchDialog(url.searchParams) };
 }
 
 export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   return <RouteError title="Dialog Error" error={error} />;
 }
 
-export default function Dialog({ loaderData }: Route.ComponentProps) {
+export default function Dialog({
+  loaderData: { dialogData },
+}: Route.ComponentProps) {
   return (
     <div className="py-4">
       {/* Suspense shows spinner while promise is pending, Await handles resolved/rejected */}
       <Suspense fallback={<Spinner />}>
         <Await
-          resolve={loaderData.title}
+          resolve={dialogData}
           errorElement={<RouteError title="Dialog Error" />}
         >
           {(title) => <h2>{title}</h2>}

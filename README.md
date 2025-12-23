@@ -5,6 +5,7 @@ Prototype exploring SSR and client-side data loading in React Router 7, achievin
 ## Goal
 
 When navigating to `/dialog`:
+
 - **Dialog**: SSR immediately (priority content)
 - **Home**: Load in background, display when ready
 
@@ -15,19 +16,19 @@ Both routes use the same approach:
 ```typescript
 // Server: await for SSR
 export async function loader({ request }) {
-  return { title: await fetchData(...) };
+  return { data: await fetchData(...) };
 }
 
 // Client: return unresolved promise (no await!) to show spinner instantly
 export function clientLoader({ request }) {
-  return { title: fetchData(...) };
+  return { data: fetchData(...) };
 }
 ```
 
 ```tsx
 // Component: Suspense handles pending, Await handles resolved/rejected
 <Suspense fallback={<Spinner />}>
-  <Await resolve={title} errorElement={<ErrorComponent />}>
+  <Await resolve={data} errorElement={<ErrorComponent />}>
     {(t) => <h1>{t}</h1>}
   </Await>
 </Suspense>
@@ -40,9 +41,9 @@ Home has one addition - when dialog is open, return unresolved promise to load i
 ```typescript
 export async function loader({ request }) {
   if (isExactMatch(url.pathname)) {
-    return { title: await fetchHome(...) };  // SSR
+    return { data: await fetchHome(...) };  // SSR
   }
-  return { title: fetchHome(...) };  // Deferred (dialog is open)
+  return { data: fetchHome(...) };  // Deferred (dialog is open)
 }
 ```
 
@@ -51,10 +52,10 @@ export async function loader({ request }) {
 Returning an unresolved promise from a server loader that rejects will crash Node.js:
 
 ```typescript
-return { title: fetchData(...) };  // If this rejects → Node crashes
+return { data: fetchData(...) };  // If this rejects → Node crashes
 ```
 
-**Why?** The loader returns `{ title: Promise }`. When that nested promise rejects later, it's outside React Router's try-catch, causing an unhandled rejection.
+**Why?** The loader returns `{ data: Promise }`. When that nested promise rejects later, it's outside React Router's try-catch, causing an unhandled rejection.
 
 **Solution:** Add handler in `entry.server.tsx`:
 

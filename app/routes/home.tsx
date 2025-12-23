@@ -28,16 +28,16 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   if (isExactMatch(url.pathname)) {
     // SSR: await when we're on the home page (no dialog open)
-    return { title: await fetchHome(url.searchParams) };
+    return { homeData: await fetchHome(url.searchParams) };
   }
   // Dialog is open: Return unresolved promise (loads in background)
-  return { title: fetchHome(url.searchParams) };
+  return { homeData: fetchHome(url.searchParams) };
 }
 
 // Optional: shows spinner instantly on client nav instead of waiting for server
 export function clientLoader({ request }: Route.ClientLoaderArgs) {
   const url = new URL(request.url);
-  return { title: fetchHome(url.searchParams) };
+  return { homeData: fetchHome(url.searchParams) };
 }
 
 // Prevent refetching when navigating back from dialog
@@ -47,7 +47,9 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   return <RouteError title="Home Error" error={error} />;
 }
 
-export default function Home({ loaderData: { title } }: Route.ComponentProps) {
+export default function Home({
+  loaderData: { homeData },
+}: Route.ComponentProps) {
   const { pathname, search } = useLocation();
   const params = new URLSearchParams(search);
   const [dialogBehavior, setDialogBehavior] = useState<PageLoadingBehavior>(
@@ -58,8 +60,11 @@ export default function Home({ loaderData: { title } }: Route.ComponentProps) {
     <div className="p-8">
       {/* Suspense shows spinner while promise is pending, Await handles resolved/rejected */}
       <Suspense fallback={<Spinner />}>
-        <Await resolve={title} errorElement={<RouteError title="Home Error" />}>
-          {(t) => <h1>{t}</h1>}
+        <Await
+          resolve={homeData}
+          errorElement={<RouteError title="Home Error" />}
+        >
+          {(title) => <h1>{title}</h1>}
         </Await>
       </Suspense>
       {isExactMatch(pathname) && (
